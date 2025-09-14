@@ -1,0 +1,105 @@
+plugins {
+    id 'org.springframework.boot' version '3.2.0'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'java'
+    id 'jacoco'
+    // Code quality plugins - will be enabled after configuration
+    // id 'checkstyle'
+    // id 'com.github.spotbugs' version '6.0.4'
+    // id 'pmd'
+}
+
+group = 'com.jediorganizer'
+version = '1.0.0-SNAPSHOT'
+sourceCompatibility = '21'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Spring Boot starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+    
+    // OpenAPI documentation
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+    
+    // Development tools
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    
+    // Annotation processing
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+    
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.testcontainers:mongodb'
+    testImplementation 'org.testcontainers:junit-jupiter'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                '**/Application.class',
+                '**/config/**',
+                '**/dto/**',
+                '**/entity/**'
+            ])
+        }))
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.10"
+}
+
+// Code quality configurations - will be enabled after setup
+/*
+checkstyle {
+    toolVersion = '10.12.4'
+    configFile = file("${project.rootDir}/config/checkstyle/checkstyle.xml")
+}
+
+spotbugs {
+    toolVersion = '4.8.1'
+}
+
+pmd {
+    toolVersion = '6.55.0'
+    ruleSetFiles = files("${project.rootDir}/config/pmd/pmd-ruleset.xml")
+}
+
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask) {
+    reports {
+        html.required = true
+        xml.required = false
+    }
+}
+*/

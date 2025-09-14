@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: jedi-organizer-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: jedi_organizer
+    volumes:
+      - mongodb_data:/data/db
+      - ./infrastructure/mongodb/init-db.js:/docker-entrypoint-initdb.d/init-db.js:ro
+    networks:
+      - jedi-organizer-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: jedi-organizer-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATA_MONGODB_URI: mongodb://admin:password@mongodb:27017/jedi_organizer?authSource=admin
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET}
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+    networks:
+      - jedi-organizer-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: jedi-organizer-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080/api/v1
+      VITE_GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - jedi-organizer-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: jedi-organizer-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - jedi-organizer-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  jedi-organizer-network:
+    driver: bridge
