@@ -33,6 +33,8 @@ Jedi Organizer is a web-based personal productivity application implementing Max
 - **Mobile-First Approach**: Responsive design with touch-optimized interactions
 - **Offline-First Strategy**: Local storage with background synchronization
 - **Progressive Enhancement**: Core functionality works without JavaScript
+- Do not add comments to code unless absolutely necessary
+- Use feature-based approach for project structure, not layer-based
 
 ### Technology Stack Summary
 - **Frontend**: React + TypeScript + Vite

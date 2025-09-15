@@ -139,6 +139,13 @@ Check container logs:
 ```bash
 docker compose logs -f backend
 ```
+In case of `Command failed with error 85 (IndexOptionsConflict): 'Index already exists with a different name: email_1' on server localhost:27017` as a quick fix login into mongodb container and drop index:
+```bash
+docker compose exec mongodb mongosh -u admin -p password --authenticationDatabase admin
+mongosh "mongodb://admin:password@localhost:27017/jedi_organizer" --authenticationDatabase admin
+db.users.dropIndexes()
+```
+The root cause seems like in `init-db.js` file when we create indexes during mongodb container initialization. On startup Spring tries to create the same indexes again and fails.
 
 ## 9. Security Notes
 - Do NOT commit real OAuth secrets.
