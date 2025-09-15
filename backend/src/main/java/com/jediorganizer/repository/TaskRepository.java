@@ -123,11 +123,11 @@ public interface TaskRepository extends MongoRepository<Task, String> {
 
     /**
      * Custom query to find today's actionable tasks
-     * (scheduled for today OR high priority with no scheduled date)
+     * (scheduled for today OR unscheduled active tasks)
      */
     @Query("{ 'userId': ?0, $or: [ " +
            "{ 'scheduledDate': ?1 }, " +
-           "{ 'scheduledDate': null, 'priority': { $in: ['URGENT', 'HIGH'] }, 'status': { $in: ['TODO', 'IN_PROGRESS'] } } " +
+           "{ 'scheduledDate': null, 'status': { $in: ['TODO', 'IN_PROGRESS'] } } " +
            "] }")
     List<Task> findTodaysActionableTasks(String userId, LocalDate today);
 }

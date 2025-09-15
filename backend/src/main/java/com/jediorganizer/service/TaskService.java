@@ -74,7 +74,7 @@ public class TaskService {
     }
 
     /**
-     * Get today's actionable tasks (scheduled for today OR high priority unscheduled)
+     * Get today's actionable tasks (scheduled for today OR unscheduled active tasks)
      */
     public List<Task> getTodaysActionableTasks(String userId) {
         return taskRepository.findTodaysActionableTasks(userId, LocalDate.now());
