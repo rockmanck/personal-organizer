@@ -26,7 +26,7 @@ import java.util.Optional;
  * Implements Jedi Techniques "Plan" mode functionality.
  */
 @RestController
-@RequestMapping("/projects")
+@RequestMapping("/api/v1/projects")
 @Tag(name = "Projects", description = "Project management for Jedi Techniques Plan mode")
 public class ProjectController {
 

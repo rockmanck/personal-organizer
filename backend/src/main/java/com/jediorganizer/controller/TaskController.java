@@ -28,7 +28,7 @@ import java.util.Optional;
  * Implements Jedi Techniques "Act" mode functionality.
  */
 @RestController
-@RequestMapping("/tasks")
+@RequestMapping("/api/v1/tasks")
 @Tag(name = "Tasks", description = "Task management for Jedi Techniques Act mode")
 public class TaskController {
 

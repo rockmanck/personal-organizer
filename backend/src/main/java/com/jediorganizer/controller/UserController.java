@@ -25,7 +25,7 @@ import java.util.Optional;
  * Provides endpoints for user CRUD operations.
  */
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/v1/users")
 @Tag(name = "Users", description = "User management operations")
 public class UserController {
 

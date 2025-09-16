@@ -3,6 +3,10 @@ package com.jediorganizer.service;
 import com.jediorganizer.model.User;
 import com.jediorganizer.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.User.UserBuilder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -14,15 +18,34 @@ import java.util.Optional;
  * Handles user management operations for Jedi Organizer.
  */
 @Service
-public class UserService {
-    
+public class UserService implements UserDetailsService {
+
     private final UserRepository userRepository;
-    
+
     @Autowired
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
-    
+
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            throw new UsernameNotFoundException("User not found with email: " + email);
+        }
+
+        User user = userOpt.get();
+        UserBuilder builder = org.springframework.security.core.userdetails.User.withUsername(email);
+        builder.password(""); // OAuth users don't have passwords
+        builder.authorities("ROLE_USER");
+        builder.accountExpired(false);
+        builder.accountLocked(!user.isActive());
+        builder.credentialsExpired(false);
+        builder.disabled(!user.isActive());
+
+        return builder.build();
+    }
+
     /**
      * Create a new user
      */
@@ -32,28 +55,28 @@ public class UserService {
         }
         return userRepository.save(user);
     }
-    
+
     /**
      * Find user by ID
      */
     public Optional<User> findById(String id) {
         return userRepository.findById(id);
     }
-    
+
     /**
      * Find user by email
      */
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
-    
+
     /**
      * Find user by Google ID
      */
     public Optional<User> findByGoogleId(String googleId) {
         return userRepository.findByGoogleId(googleId);
     }
-    
+
     /**
      * Update user information
      */
@@ -63,7 +86,7 @@ public class UserService {
         }
         return userRepository.save(user);
     }
-    
+
     /**
      * Update user's last login time
      */
@@ -76,7 +99,7 @@ public class UserService {
         }
         throw new IllegalArgumentException("User not found with ID: " + userId);
     }
-    
+
     /**
      * Deactivate user (soft delete)
      */
@@ -89,7 +112,7 @@ public class UserService {
         }
         throw new IllegalArgumentException("User not found with ID: " + userId);
     }
-    
+
     /**
      * Reactivate user
      */
@@ -102,21 +125,21 @@ public class UserService {
         }
         throw new IllegalArgumentException("User not found with ID: " + userId);
     }
-    
+
     /**
      * Get all active users
      */
     public List<User> getActiveUsers() {
         return userRepository.findByActiveTrue();
     }
-    
+
     /**
      * Check if user exists by email
      */
     public boolean existsByEmail(String email) {
         return userRepository.existsByEmail(email);
     }
-    
+
     /**
      * Get inactive users (for cleanup operations)
      */
@@ -124,7 +147,7 @@ public class UserService {
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(daysThreshold);
         return userRepository.findByLastLoginAtBefore(cutoffDate);
     }
-    
+
     /**
      * Get new users (registered within specified days)
      */
@@ -132,58 +155,63 @@ public class UserService {
         LocalDateTime cutoffDate = LocalDateTime.now().minusDays(daysBack);
         return userRepository.findByCreatedAtAfter(cutoffDate);
     }
-    
+
     /**
      * Get total user count
      */
     public long getTotalUserCount() {
         return userRepository.count();
     }
-    
+
     /**
      * Get active user count
      */
     public long getActiveUserCount() {
         return userRepository.findByActiveTrue().size();
     }
-    
+
     /**
      * Create or update user from OAuth provider (Google)
      */
-    public User createOrUpdateFromOAuth(String email, String firstName, String lastName, 
-                                       String googleId, String profileImageUrl) {
+    public User createOrUpdateOAuthUser(String email, String name, String googleId, String picture) {
         // Try to find existing user by Google ID first
         Optional<User> existingUser = userRepository.findByGoogleId(googleId);
         if (existingUser.isPresent()) {
             User user = existingUser.get();
             // Update user info from OAuth
-            user.setFirstName(firstName);
-            user.setLastName(lastName);
-            user.setDisplayName(firstName + " " + lastName);
-            user.setProfileImageUrl(profileImageUrl);
+            String[] nameParts = name.split(" ", 2);
+            user.setFirstName(nameParts[0]);
+            user.setLastName(nameParts.length > 1 ? nameParts[1] : "");
+            user.setDisplayName(name);
+            user.setProfileImageUrl(picture);
             user.updateLastLogin();
             return userRepository.save(user);
         }
-        
+
         // Try to find by email (existing user linking OAuth)
         Optional<User> userByEmail = userRepository.findByEmail(email);
         if (userByEmail.isPresent()) {
             User user = userByEmail.get();
             // Link Google OAuth to existing account
             user.setGoogleId(googleId);
-            user.setProfileImageUrl(profileImageUrl);
+            user.setProfileImageUrl(picture);
             user.updateLastLogin();
             return userRepository.save(user);
         }
-        
+
         // Create new user
+        String[] nameParts = name.split(" ", 2);
+        String firstName = nameParts[0];
+        String lastName = nameParts.length > 1 ? nameParts[1] : "";
+
         User newUser = new User(email, firstName, lastName);
         newUser.setGoogleId(googleId);
-        newUser.setProfileImageUrl(profileImageUrl);
+        newUser.setDisplayName(name);
+        newUser.setProfileImageUrl(picture);
         newUser.updateLastLogin();
         return userRepository.save(newUser);
     }
-    
+
     /**
      * Delete user permanently (use with caution)
      */

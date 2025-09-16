@@ -15,7 +15,7 @@ import java.util.Map;
  * Provides endpoints to verify that the application is running correctly.
  */
 @RestController
-@RequestMapping("/health")
+@RequestMapping("/api/v1/health")
 public class HealthController {
 
     @Value("${spring.application.name:jedi-organizer-backend}")
