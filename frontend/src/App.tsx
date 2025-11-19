@@ -1,4 +1,3 @@
-import React from 'react';
 import {Route, Routes} from 'react-router-dom';
 import {Container} from '@mui/material';
 
@@ -12,6 +11,9 @@ import Login from './components/auth/Login';
 import AuthCallback from './components/auth/AuthCallback';
 import PrivateRoute from './components/auth/PrivateRoute';
 import {AuthProvider} from './contexts/AuthContext';
+import {NotificationProvider} from './contexts/NotificationContext';
+import {LoadingProvider} from './contexts/LoadingContext';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 /**
  * Main App component implementing the three-mode interface
@@ -20,57 +22,63 @@ import {AuthProvider} from './contexts/AuthContext';
  */
 function App() {
   return (
-    <AuthProvider>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <NotificationProvider>
+          <LoadingProvider>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
 
-        {/* Protected routes */}
-        <Route path="/" element={
-          <PrivateRoute>
-            <Layout>
-              <Container maxWidth="xl" sx={{ py: 2 }}>
-                <Dashboard />
-              </Container>
-            </Layout>
-          </PrivateRoute>
-        } />
+              {/* Protected routes */}
+              <Route path="/" element={
+                <PrivateRoute>
+                  <Layout>
+                    <Container maxWidth="xl" sx={{ py: 2 }}>
+                      <Dashboard />
+                    </Container>
+                  </Layout>
+                </PrivateRoute>
+              } />
 
-        <Route path="/act" element={
-          <PrivateRoute>
-            <Layout>
-              <Container maxWidth="xl" sx={{ py: 2 }}>
-                <ActMode />
-              </Container>
-            </Layout>
-          </PrivateRoute>
-        } />
+              <Route path="/act" element={
+                <PrivateRoute>
+                  <Layout>
+                    <Container maxWidth="xl" sx={{ py: 2 }}>
+                      <ActMode />
+                    </Container>
+                  </Layout>
+                </PrivateRoute>
+              } />
 
-        <Route path="/plan" element={
-          <PrivateRoute>
-            <Layout>
-              <Container maxWidth="xl" sx={{ py: 2 }}>
-                <PlanMode />
-              </Container>
-            </Layout>
-          </PrivateRoute>
-        } />
+              <Route path="/plan" element={
+                <PrivateRoute>
+                  <Layout>
+                    <Container maxWidth="xl" sx={{ py: 2 }}>
+                      <PlanMode />
+                    </Container>
+                  </Layout>
+                </PrivateRoute>
+              } />
 
-        <Route path="/reflect" element={
-          <PrivateRoute>
-            <Layout>
-              <Container maxWidth="xl" sx={{ py: 2 }}>
-                <ReflectMode />
-              </Container>
-            </Layout>
-          </PrivateRoute>
-        } />
+              <Route path="/reflect" element={
+                <PrivateRoute>
+                  <Layout>
+                    <Container maxWidth="xl" sx={{ py: 2 }}>
+                      <ReflectMode />
+                    </Container>
+                  </Layout>
+                </PrivateRoute>
+              } />
 
-        {/* 404 Not Found */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </AuthProvider>
+              {/* 404 Not Found */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </LoadingProvider>
+        </NotificationProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

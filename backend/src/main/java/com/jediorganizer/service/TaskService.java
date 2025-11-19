@@ -1,8 +1,9 @@
 package com.jediorganizer.service;
 
+import com.jediorganizer.exception.BusinessValidationException;
+import com.jediorganizer.exception.ResourceNotFoundException;
 import com.jediorganizer.model.Task;
 import com.jediorganizer.repository.TaskRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -19,7 +20,6 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
 
-    @Autowired
     public TaskService(TaskRepository taskRepository) {
         this.taskRepository = taskRepository;
     }
@@ -29,7 +29,7 @@ public class TaskService {
      */
     public Task createTask(Task task) {
         if (task.getUserId() == null) {
-            throw new IllegalArgumentException("Task must have a user ID");
+            throw new BusinessValidationException("MISSING_USER_ID", "Task must have a user ID");
         }
         return taskRepository.save(task);
     }
@@ -146,7 +146,7 @@ public class TaskService {
             task.start();
             return taskRepository.save(task);
         }
-        throw new IllegalArgumentException("Task not found or access denied");
+        throw new ResourceNotFoundException("Task", taskId);
     }
 
     /**
@@ -159,7 +159,7 @@ public class TaskService {
             task.complete();
             return taskRepository.save(task);
         }
-        throw new IllegalArgumentException("Task not found or access denied");
+        throw new ResourceNotFoundException("Task", taskId);
     }
 
     /**

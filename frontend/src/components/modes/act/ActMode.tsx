@@ -15,24 +15,23 @@ import {
   Typography
 } from '@mui/material';
 import {Add as AddIcon, Refresh as RefreshIcon} from '@mui/icons-material';
-import {useTodayTasks} from '../../../hooks';
+import {useTodayTasks, useTaskMutations} from '../../../hooks/use-enhanced-tasks';
 import {CreateTaskRequest, Task, TaskStatus} from '../../../types';
-import {taskService} from '../../../services';
 import TaskForm from '../../common/TaskForm';
 
 const ActMode: React.FC = () => {
   const { tasks, loading, error, refetch } = useTodayTasks();
+  const { createTask, completeTask } = useTaskMutations();
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
-  const [isCreatingTask, setIsCreatingTask] = useState(false);
 
   const handleTaskComplete = async (taskId: string) => {
     setCompletingTasks(prev => new Set([...prev, taskId]));
     try {
-      await taskService.completeTask(taskId);
-      refetch();
-    } catch (err) {
-      console.error('Failed to complete task:', err);
+      const result = await completeTask(taskId);
+      if (result) {
+        refetch();
+      }
     } finally {
       setCompletingTasks(prev => {
         const next = new Set(prev);
@@ -43,12 +42,10 @@ const ActMode: React.FC = () => {
   };
 
   const handleCreateTask = async (taskData: CreateTaskRequest) => {
-    setIsCreatingTask(true);
-    try {
-      await taskService.createTask(taskData);
+    const result = await createTask(taskData);
+    if (result) {
       refetch();
-    } finally {
-      setIsCreatingTask(false);
+      setIsTaskFormOpen(false);
     }
   };
 
@@ -159,7 +156,6 @@ const ActMode: React.FC = () => {
         open={isTaskFormOpen}
         onClose={() => setIsTaskFormOpen(false)}
         onSubmit={handleCreateTask}
-        loading={isCreatingTask}
       />
     </Box>
   );

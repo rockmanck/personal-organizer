@@ -19,10 +19,9 @@ interface TaskFormProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (taskData: CreateTaskRequest) => Promise<void>;
-  loading?: boolean;
 }
 
-const TaskForm: React.FC<TaskFormProps> = ({ open, onClose, onSubmit, loading = false }) => {
+const TaskForm: React.FC<TaskFormProps> = ({ open, onClose, onSubmit }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<TaskType>(TaskType.ACTION);
@@ -117,11 +116,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ open, onClose, onSubmit, loading = 
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={handleClose} disabled={loading}>
+          <Button onClick={handleClose}>
             Cancel
           </Button>
-          <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Task'}
+          <Button type="submit" variant="contained">
+            Create Task
           </Button>
         </DialogActions>
       </form>

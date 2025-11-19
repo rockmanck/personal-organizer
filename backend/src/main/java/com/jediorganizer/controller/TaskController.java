@@ -1,10 +1,13 @@
 package com.jediorganizer.controller;
 
+import com.jediorganizer.dto.CreateTaskRequest;
+import com.jediorganizer.dto.UpdateTaskRequest;
+import com.jediorganizer.exception.ResourceNotFoundException;
 import com.jediorganizer.model.Task;
 import com.jediorganizer.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,7 +38,6 @@ public class TaskController {
     private final TaskService taskService;
     private static final String DEMO_USER_ID = "demo-user-123";
 
-    @Autowired
     public TaskController(TaskService taskService) {
         this.taskService = taskService;
     }
@@ -105,7 +107,7 @@ public class TaskController {
     public ResponseEntity<Task> getTaskById(@PathVariable String id) {
         Optional<Task> task = taskService.findByIdAndUserId(id, DEMO_USER_ID);
         return task.map(ResponseEntity::ok)
-                  .orElse(ResponseEntity.notFound().build());
+                  .orElseThrow(() -> new ResourceNotFoundException("Task", id));
     }
 
     /**
@@ -113,14 +115,11 @@ public class TaskController {
      */
     @PostMapping
     @Operation(summary = "Create a new task")
-    public ResponseEntity<Task> createTask(@RequestBody Task task) {
-        try {
-            task.setUserId(DEMO_USER_ID);
-            Task createdTask = taskService.createTask(task);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
+    public ResponseEntity<Task> createTask(@Valid @RequestBody CreateTaskRequest request) {
+        Task task = request.toTask();
+        task.setUserId(DEMO_USER_ID);
+        Task createdTask = taskService.createTask(task);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
     }
 
     /**
@@ -128,21 +127,17 @@ public class TaskController {
      */
     @PutMapping("/{id}")
     @Operation(summary = "Update task")
-    public ResponseEntity<Task> updateTask(@PathVariable String id, @RequestBody Task task) {
-        try {
-            // Verify task exists and belongs to user
-            Optional<Task> existingTask = taskService.findByIdAndUserId(id, DEMO_USER_ID);
-            if (existingTask.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            task.setId(id);
-            task.setUserId(DEMO_USER_ID);
-            Task updatedTask = taskService.updateTask(task);
-            return ResponseEntity.ok(updatedTask);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+    public ResponseEntity<Task> updateTask(@PathVariable String id, @Valid @RequestBody UpdateTaskRequest request) {
+        // Verify task exists and belongs to user
+        Optional<Task> existingTaskOpt = taskService.findByIdAndUserId(id, DEMO_USER_ID);
+        if (existingTaskOpt.isEmpty()) {
+            throw new ResourceNotFoundException("Task", id);
         }
+
+        Task existingTask = existingTaskOpt.get();
+        request.updateTask(existingTask);
+        Task updatedTask = taskService.updateTask(existingTask);
+        return ResponseEntity.ok(updatedTask);
     }
 
     /**
@@ -151,23 +146,15 @@ public class TaskController {
     @PatchMapping("/{id}/start")
     @Operation(summary = "Start a task")
     public ResponseEntity<Task> startTask(@PathVariable String id) {
-        try {
-            Task task = taskService.startTask(id, DEMO_USER_ID);
-            return ResponseEntity.ok(task);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Task task = taskService.startTask(id, DEMO_USER_ID);
+        return ResponseEntity.ok(task);
     }
 
     @PatchMapping("/{id}/complete")
     @Operation(summary = "Complete a task")
     public ResponseEntity<Task> completeTask(@PathVariable String id) {
-        try {
-            Task task = taskService.completeTask(id, DEMO_USER_ID);
-            return ResponseEntity.ok(task);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Task task = taskService.completeTask(id, DEMO_USER_ID);
+        return ResponseEntity.ok(task);
     }
 
     /**
@@ -177,12 +164,8 @@ public class TaskController {
     @Operation(summary = "Schedule task for a specific date")
     public ResponseEntity<Task> scheduleTask(@PathVariable String id,
                                            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate scheduledDate) {
-        try {
-            Task task = taskService.scheduleTask(id, DEMO_USER_ID, scheduledDate);
-            return ResponseEntity.ok(task);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Task task = taskService.scheduleTask(id, DEMO_USER_ID, scheduledDate);
+        return ResponseEntity.ok(task);
     }
 
     /**
@@ -191,12 +174,8 @@ public class TaskController {
     @PostMapping("/{id}/notes")
     @Operation(summary = "Add note to task")
     public ResponseEntity<Task> addTaskNote(@PathVariable String id, @RequestBody String noteContent) {
-        try {
-            Task task = taskService.addTaskNote(id, DEMO_USER_ID, noteContent);
-            return ResponseEntity.ok(task);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+        Task task = taskService.addTaskNote(id, DEMO_USER_ID, noteContent);
+        return ResponseEntity.ok(task);
     }
 
     /**
@@ -250,11 +229,7 @@ public class TaskController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete task")
     public ResponseEntity<Void> deleteTask(@PathVariable String id) {
-        try {
-            taskService.deleteTask(id, DEMO_USER_ID);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.notFound().build();
-        }
+        taskService.deleteTask(id, DEMO_USER_ID);
+        return ResponseEntity.noContent().build();
     }
 }

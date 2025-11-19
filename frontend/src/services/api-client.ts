@@ -1,83 +1,121 @@
 import {ApiError} from '../types';
+import { parseError, logError } from '../utils/error-handling';
 
 export class ApiClient {
   private readonly baseURL: string;
 
-  constructor(baseURL: string = import.meta.env.VITE_API_BASE_URL ? `${import.meta.env.VITE_API_BASE_URL}/api/v1` : '/api/v1') {
+  constructor(baseURL: string = import.meta.env.VITE_API_BASE_URL ? `${import.meta.env.VITE_API_BASE_URL}` : '/api/v1') {
     this.baseURL = baseURL;
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
-      const errorData: ApiError = await response.json().catch(() => ({
-        error: {
-          code: 'UNKNOWN_ERROR',
-          message: 'An unknown error occurred',
-          timestamp: new Date().toISOString(),
-          path: response.url
-        }
-      }));
-      throw new Error(errorData.error.message);
+      let errorData: ApiError;
+
+      try {
+        errorData = await response.json();
+      } catch (jsonParseError) {
+        // Fallback for non-JSON error responses
+        console.warn('Failed to parse error response as JSON:', jsonParseError);
+        errorData = {
+          error: {
+            code: 'HTTP_ERROR',
+            message: `HTTP ${response.status}: ${response.statusText}`,
+            timestamp: new Date().toISOString(),
+            path: response.url,
+            details: {
+              status: response.status,
+              statusText: response.statusText
+            }
+          }
+        };
+      }
+
+      // Log the error for monitoring
+      const parsedError = parseError(errorData);
+      logError(parsedError, `API Call: ${response.url}`);
+
+      // Throw the error for handling by the caller
+      throw errorData;
     }
 
     if (response.status === 204) {
       return {} as T;
     }
 
-    return response.json();
+    try {
+      return await response.json();
+    } catch (jsonParseError) {
+      // Log parsing errors
+      const error = parseError(jsonParseError);
+      logError(error, `JSON Parse Error: ${response.url}`);
+      throw jsonParseError;
+    }
   }
 
-  async get<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'GET',
+  private async makeRequest<T>(
+    method: string,
+    endpoint: string,
+    data?: any,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseURL}${endpoint}`;
+
+    const config: RequestInit = {
+      method,
       headers: {
         'Content-Type': 'application/json',
+        ...options.headers,
       },
-    });
-    return this.handleResponse<T>(response);
+      ...options,
+    };
+
+    if (data) {
+      config.body = JSON.stringify(data);
+    }
+
+    try {
+      const response = await fetch(url, config);
+      return await this.handleResponse<T>(response);
+    } catch (error) {
+      // Handle network errors
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        const networkError = {
+          error: {
+            code: 'NETWORK_ERROR',
+            message: 'Unable to connect to the server',
+            timestamp: new Date().toISOString(),
+            path: url,
+            details: { originalError: error.message }
+          }
+        };
+        logError(parseError(networkError), `Network Error: ${url}`);
+        throw networkError;
+      }
+
+      // Re-throw other errors (like ApiErrors)
+      throw error;
+    }
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    return this.handleResponse<T>(response);
+  async get<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    return this.makeRequest<T>('GET', endpoint, undefined, options);
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    return this.handleResponse<T>(response);
+  async post<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.makeRequest<T>('POST', endpoint, data, options);
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    return this.handleResponse<T>(response);
+  async put<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.makeRequest<T>('PUT', endpoint, data, options);
   }
 
-  async patch<T>(endpoint: string, data?: any): Promise<T> {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: data ? JSON.stringify(data) : undefined,
-    });
-    return this.handleResponse<T>(response);
+  async patch<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    return this.makeRequest<T>('PATCH', endpoint, data, options);
+  }
+
+  async delete<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    return this.makeRequest<T>('DELETE', endpoint, undefined, options);
   }
 }
 
